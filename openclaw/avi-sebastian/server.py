@@ -76,7 +76,7 @@ TOOLS = [{"functionDeclarations": [
     },
     {
         "name": "informe_trabajos_ejecutados",
-        "description": "Genera y envía por correo un informe en Excel de los trabajos de arbolado YA EJECUTADOS/REALIZADOS en un rango de fechas (fotos reales, minimapa con ubicación y enlace a Google Maps de cada trabajo). Úsala solo cuando pida un informe o reporte de trabajos ejecutados/realizados/hechos (no de solicitudes pendientes, para eso usa solicitudes_arbolado_pendientes). Sé flexible con las fechas: si da una referencia relativa o aproximada ('este año', 'el mes pasado', 'los últimos 6 meses', 'esta semana', 'en agosto'), calcula tú misma el rango exacto (desde/hasta) a partir de la fecha de hoy, SIN pedirle día y mes exactos. Solo pregunta si no dio ninguna referencia de tiempo, y en ese caso ofrécele opciones simples (por ejemplo 'el último mes' o 'los últimos 6 meses') en vez de pedir una fecha exacta.",
+        "description": "Prepara EN SEGUNDO PLANO (sin bloquear la conversación) un informe en Excel de los trabajos de arbolado YA EJECUTADOS/REALIZADOS en un rango de fechas, y lo envía por correo cuando termina (fotos reales, minimapa con ubicación y enlace a Google Maps de cada trabajo). Úsala solo cuando pida un informe o reporte de trabajos ejecutados/realizados/hechos (no de solicitudes pendientes, para eso usa solicitudes_arbolado_pendientes). Sé flexible con las fechas: si da una referencia relativa o aproximada ('este año', 'el mes pasado', 'los últimos 6 meses', 'esta semana', 'en agosto'), calcula tú misma el rango exacto (desde/hasta) a partir de la fecha de hoy, SIN pedirle día y mes exactos. Solo pregunta si no dio ninguna referencia de tiempo, y en ese caso ofrécele opciones simples (por ejemplo 'el último mes' o 'los últimos 6 meses') en vez de pedir una fecha exacta. ANTES de llamar a esta herramienta, repítele el rango de fechas y la zona (o 'todos los sectores' si no dio zona) y espera su confirmación explícita. Esta herramienta responde AL INSTANTE (no espera a que el informe termine de armarse, eso puede tardar varios minutos) — apenas responda, dile de inmediato algo como 'Listo, te estoy preparando el informe, te lo mando por correo apenas esté listo. ¿Necesitas algo más?' y sigue la conversación con total normalidad; no te quedes en silencio esperando.",
         "parameters": {"type": "OBJECT", "properties": {
             "desde": {"type": "STRING", "description": "Fecha de inicio del rango, formato AAAA-MM-DD. Obligatoria."},
             "hasta": {"type": "STRING", "description": "Fecha de término del rango, formato AAAA-MM-DD. Obligatoria."},
@@ -219,13 +219,14 @@ def instruccion(ahora):
         "o aproximada ('este año', 'el mes pasado', 'los últimos 6 meses', 'esta semana', 'en agosto'), calcula tú "
         "misma el rango exacto (desde/hasta) usando la fecha de hoy de arriba, SIN pedirle el día y mes exactos de "
         "cada extremo. Solo pregunta por fechas si no dio ninguna referencia de tiempo, y ahí ofrécele opciones "
-        "simples (por ejemplo '¿el último mes, o los últimos 6 meses?') en vez de pedirle una fecha exacta; si dio "
-        "una zona, pásala. Esta herramienta genera el Excel (con fotos, minimapa y ubicación "
-        "de cada trabajo) y lo envía por correo en un solo paso; no hace falta guardar_borrador_correo para esto, y "
-        "la herramienta puede tardar unos segundos en responder (armando el archivo), así que si te pide el informe "
-        "dile brevemente algo como 'dame un momento, lo estoy preparando' antes de llamarla. Cuando responda, dile "
-        "cuántos trabajos incluyó y que se lo enviaste por correo; si hubo avisos menores al generarlo, no se los "
-        "leas uno por uno, solo menciona si hubo alguno.\n\n"
+        "simples (por ejemplo '¿el último mes, o los últimos 6 meses?') en vez de pedirle una fecha exacta. ANTES DE "
+        "LLAMAR A LA HERRAMIENTA, confirma con ella en voz alta el rango de fechas que vas a usar y la zona (o dile "
+        "'todos los sectores' si no nombró ninguna) y espera que lo confirme; no llames a la herramienta sin esa "
+        "confirmación. Esta herramienta arma el informe EN SEGUNDO PLANO y te responde de inmediato, sin esperar a "
+        "que el Excel esté listo (armarlo con fotos y minimapa puede tardar varios minutos) — apenas te responda, "
+        "dile ALTIRO algo como 'Listo, te lo estoy preparando, te lo mando por correo apenas esté listo. ¿Necesitas "
+        "algo más?' y sigue conversando con normalidad; NUNCA te quedes callada esperando a que termine. No hace "
+        "falta guardar_borrador_correo para esto.\n\n"
         "Si te pide cualquier otra cosa que no esté en esta lista, responde en una frase breve que todavía no estás "
         "configurada para eso (por ejemplo: 'Todavía no estoy configurada para eso'). No lo intentes resolver por tu "
         "cuenta, no inventes información y no propongas alternativas por tu cuenta.\n"
@@ -251,6 +252,40 @@ class Sesion:
     async def correo_estado(self):
         await self.a_cli({"type": "correo_estado", "asunto": self.correo_borrador.get("asunto") or "",
                            "mensaje": self.correo_borrador.get("mensaje") or ""})
+
+    async def _avisar(self, mensaje):
+        """Manda un aviso a la pantalla si la conexión sigue abierta; si no, solo queda en el log."""
+        try:
+            await self.a_cli({"type": "aviso", "mensaje": mensaje})
+        except Exception:  # noqa: BLE001
+            pass
+
+    async def _informe_en_segundo_plano(self, desde, hasta, zona):
+        """Arma y envía el informe de trabajos ejecutados sin bloquear la conversación en curso
+        (puede tardar varios minutos por las fotos y minimapas que baja de a uno)."""
+        try:
+            res = await asyncio.to_thread(informe.generar_informe, CFG["google_sa_file"], desde, hasta, zona)
+        except Exception as e:  # noqa: BLE001
+            log.exception("informe (segundo plano)")
+            await self._avisar("No pude generar el informe de trabajos ejecutados: %s" % e)
+            return
+        if not res.get("ok"):
+            await self._avisar(res.get("error") or "no pude generar el informe de trabajos ejecutados")
+            return
+        prueba = bool(CFG.get("modo_prueba", True))
+        para = CFG["destinatario_prueba"] if prueba else CFG["destinatario"]
+        cuerpo = "Adjunto el informe de trabajos ejecutados entre %s y %s%s." % (
+            desde.strftime("%d-%m-%Y"), hasta.strftime("%d-%m-%Y"), (" en '%s'" % zona) if zona else "")
+        if res.get("errores"):
+            cuerpo += "\n\nAvisos al generarlo:\n" + "\n".join(res["errores"])
+        try:
+            await asyncio.to_thread(correo.enviar, CFG["smtp"], para,
+                ("[PRUEBA] " if prueba else "") + res["nombre"], cuerpo, [(res["nombre"], res["bytes"])])
+        except Exception as e:  # noqa: BLE001
+            log.exception("informe correo (segundo plano)")
+            await self._avisar("El informe de trabajos ejecutados se generó pero no se pudo enviar por correo: %s" % e)
+            return
+        await self._avisar("Informe de trabajos ejecutados enviado a tu correo: %d trabajos." % res["filas"])
 
     # ---------- herramientas ----------
     async def herramienta(self, nombre, args):
@@ -282,29 +317,9 @@ class Sesion:
                     hasta = datetime.strptime((args.get("hasta") or "").strip(), "%Y-%m-%d").date()
                 except ValueError:
                     return {"ok": False, "error": "el rango de fechas no es válido; pídeselo de nuevo en formato AAAA-MM-DD"}
-                try:
-                    res = await asyncio.to_thread(
-                        informe.generar_informe, CFG["google_sa_file"], desde, hasta, args.get("zona") or None)
-                except Exception as e:  # noqa: BLE001
-                    log.exception("informe")
-                    return {"ok": False, "error": "no pude generar el informe en este momento"}
-                if not res.get("ok"):
-                    return res
-                prueba = bool(CFG.get("modo_prueba", True))
-                para = CFG["destinatario_prueba"] if prueba else CFG["destinatario"]
-                cuerpo = "Adjunto el informe de trabajos ejecutados entre %s y %s%s." % (
-                    desde.strftime("%d-%m-%Y"), hasta.strftime("%d-%m-%Y"),
-                    (" en '%s'" % args["zona"]) if args.get("zona") else "")
-                if res.get("errores"):
-                    cuerpo += "\n\nAvisos al generarlo:\n" + "\n".join(res["errores"])
-                try:
-                    await asyncio.to_thread(correo.enviar, CFG["smtp"], para,
-                        ("[PRUEBA] " if prueba else "") + res["nombre"], cuerpo, [(res["nombre"], res["bytes"])])
-                except Exception as e:  # noqa: BLE001
-                    log.exception("informe correo")
-                    return {"ok": False, "error": "el informe se generó pero no se pudo enviar por correo: %s" % e}
-                return {"ok": True, "mensaje": "Informe generado y enviado, con %d trabajos." % res["filas"],
-                        "filas": res["filas"], "avisos": len(res.get("errores") or [])}
+                asyncio.create_task(self._informe_en_segundo_plano(desde, hasta, args.get("zona") or None))
+                return {"ok": True, "mensaje": "Empecé a preparar el informe en segundo plano; se lo enviará por "
+                        "correo apenas esté listo (puede tardar varios minutos)."}
             if nombre == "obtener_fecha_hora":
                 return fecha_hora_sync()
             if nombre == "obtener_clima":
