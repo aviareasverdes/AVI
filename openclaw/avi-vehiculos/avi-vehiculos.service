@@ -1,0 +1,14 @@
+[Unit]
+Description=AVI - asistente de voz para solicitudes de movil
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/ubuntu/avi-vehiculos
+ExecStart=/home/ubuntu/avi-vehiculos/venv/bin/python /home/ubuntu/avi-vehiculos/server.py
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<script>(function(){var p=location.pathname;document.write('<base href="'+(p.endsWith('/')?p:p+'/')+'">');})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#008069">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>AVI</title>
+<style>
+:root{--verde:#008069;--verde2:#00a884;--fondo:#efeae2;--txt:#111b21;--mut:#667781;--barra:#f0f2f5;--user:#d9fdd3}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt);background:var(--fondo)}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+button{font:inherit;border:0;cursor:pointer}
+svg{display:block}
+[hidden]{display:none!important}
+
+/* ---------- modo texto (estilo WhatsApp, colores claros) ---------- */
+#cab{display:flex;align-items:center;gap:10px;background:var(--verde);color:#fff;padding:calc(8px + env(safe-area-inset-top)) 10px 8px 12px;position:relative;z-index:21;transition:background .3s}
+body.voz #cab{background:transparent}
+#modoSwitch{display:flex;background:rgba(255,255,255,.2);border-radius:20px;padding:2px;gap:2px;flex:none}
+#modoSwitch button{padding:6px 12px;border-radius:18px;font-size:.78rem;font-weight:700;color:#fff;background:transparent}
+#modoSwitch button.activo{background:#fff;color:var(--verde)}
+body.voz #modoSwitch{background:rgba(255,255,255,.1)}
+body.voz #modoSwitch button{color:#9fb3c4}
+body.voz #modoSwitch button.activo{background:#2dd4bf;color:#04211e}
+.av{width:38px;height:38px;border-radius:50%;background:#2dd4bf;color:#04211e;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.tit{flex:1;min-width:0}
+.nom{font-weight:600;font-size:1.05rem;display:flex;align-items:center;gap:8px}
+#prueba{font-size:.6rem;background:#ffd279;color:#4a3300;border-radius:5px;padding:1px 6px;font-weight:700}
+#estado{font-size:.78rem;opacity:.85}
+.ico{background:transparent;color:#fff;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ico svg{width:22px;height:22px;fill:#fff}
+#ajustes{background:#fff;border-bottom:1px solid #d1d7db;padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-size:.85rem}
+#ajustes select{width:100%;padding:8px;border-radius:8px;border:1px solid #d1d7db;font:inherit;font-size:.85rem;background:#fff}
+#ajustes .fila2{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#ajustes button{background:var(--barra);color:var(--txt);padding:8px 12px;border-radius:8px;font-weight:600}
+#ajustes button:disabled{opacity:.5}
+#nivel{width:120px;height:6px;background:#d1d7db;border-radius:3px;overflow:hidden}
+#nivel i{display:block;height:100%;width:0;background:var(--verde2);transition:width .08s}
+#chat{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:var(--fondo)}
+.b{max-width:82%;padding:6px 9px 7px;border-radius:8px;line-height:1.35;font-size:.95rem;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 1px .5px rgba(11,20,26,.13)}
+.b.user{align-self:flex-end;background:var(--user);border-top-right-radius:0}
+.b.avi{align-self:flex-start;background:#fff;border-top-left-radius:0}
+.b.sis{align-self:center;background:#fff5c4;color:#54656f;font-size:.78rem;text-align:center;max-width:90%}
+#vacio{margin:auto;text-align:center;color:var(--mut);font-size:.9rem;padding:0 30px}
+#barra{display:flex;gap:8px;align-items:center;background:var(--barra);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+#txt{flex:1;min-width:0;border:0;border-radius:22px;padding:12px 15px;font:inherit;font-size:1rem;background:#fff;color:var(--txt);outline:none}
+#accion{width:48px;height:48px;border-radius:50%;background:var(--verde2);display:flex;align-items:center;justify-content:center;padding:0;flex:none}
+#accion svg{width:24px;height:24px;fill:#fff}
+#accion .i-enviar{display:none}
+#barra[data-modo=enviar] #accion .i-enviar{display:block}
+#barra[data-modo=enviar] #accion .i-mic{display:none}
+
+/* ---------- modo voz (estilo Jarvis, oscuro, solo voz) ---------- */
+#voz{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:flex-end;
+  background:radial-gradient(ellipse at 50% 38%,#0e2233 0%,#070f18 60%,#04080d 100%);color:#e6edf3}
+body.voz #voz{display:flex}
+#zonaOrbe{flex:1;width:100%;display:flex;align-items:center;justify-content:center;min-height:0}
+.orbe{position:relative;width:210px;height:210px;border-radius:50%;
+  background:radial-gradient(circle at 36% 30%,#8ffbee,#2dd4bf 42%,#0b6b74 100%);
+  box-shadow:0 0 70px 12px rgba(45,212,191,.45),inset 0 0 44px rgba(255,255,255,.28);
+  transform:scale(var(--esc,1));transition:transform .1s linear,box-shadow .4s,background .4s}
+.orbe i{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(45,212,191,.55);animation:anillo 3.2s ease-out infinite}
+.orbe i:nth-child(2){animation-delay:1.07s}.orbe i:nth-child(3){animation-delay:2.14s}
+@keyframes anillo{0%{transform:scale(1);opacity:.75}100%{transform:scale(2);opacity:0}}
+.orbe.habla{background:radial-gradient(circle at 36% 30%,#b7d3ff,#3b82f6 46%,#1b3a8a 100%);
+  box-shadow:0 0 80px 16px rgba(59,130,246,.55),inset 0 0 44px rgba(255,255,255,.3);animation:latido .95s ease-in-out infinite}
+.orbe.habla i{border-color:rgba(96,165,250,.6);animation-duration:1.7s}
+@keyframes latido{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+#avisoVoz{position:absolute;top:calc(66px + env(safe-area-inset-top));left:16px;right:16px;text-align:center;font-size:.85rem;color:#f5c26b;min-height:1.2em}
+#tarjetaCorreo{width:calc(100% - 28px);margin:0 14px 10px;background:rgba(20,34,48,.94);border:1px solid #27455c;border-radius:16px;padding:12px 14px;max-height:38vh;overflow:auto;flex:none}
+#tarjetaCorreo h2{margin:0 0 6px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2dd4bf}
+#tarjetaCorreo .asunto{font-weight:700;margin-bottom:6px}
+#tarjetaCorreo .mensaje{white-space:pre-wrap;font-size:.9rem;color:#c9d6e0;line-height:1.4}
+#tarjetaSolicitudes{width:calc(100% - 28px);margin:0 14px 10px;background:rgba(20,34,48,.94);border:1px solid #27455c;border-radius:16px;padding:12px 14px;max-height:38vh;overflow:auto;flex:none}
+#tarjetaSolicitudes h2{margin:0 0 6px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2dd4bf}
+#solLista ol{margin:0;padding-left:20px}
+#solLista li{margin-bottom:8px;font-size:.9rem;color:#c9d6e0;line-height:1.4}
+#solLista a{color:#2dd4bf}
+.b.avi a{color:var(--verde)}
+.b.avi ol{margin:6px 0 0;padding-left:20px}
+.b.avi li{margin-bottom:6px}
+#controlesVoz{flex:none;display:flex;align-items:center;gap:26px;margin:0 0 calc(26px + env(safe-area-inset-bottom))}
+#colgar{width:66px;height:66px;border-radius:50%;background:#ef4444;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 6px 20px rgba(239,68,68,.4)}
+#colgar svg{width:30px;height:30px;fill:#fff}
+#micMute{width:54px;height:54px;border-radius:50%;background:#1b2e3d;border:2px solid #2dd4bf;display:flex;align-items:center;justify-content:center;padding:0}
+#micMute svg{width:24px;height:24px;fill:#e6edf3}
+#micMute .i-apagado{display:none}
+#micMute.apagado{background:#ef4444;border-color:#ef4444}
+#micMute.apagado .i-encendido{display:none}
+#micMute.apagado .i-apagado{display:block}
+</style>
+</head>
+<body>
+<header id="cab">
+  <div class="av">A</div>
+  <div class="tit"><div class="nom">AVI <span id="prueba" hidden>MODO PRUEBA</span></div><div id="estado">en línea</div></div>
+  <div id="modoSwitch">
+    <button type="button" data-m="texto" class="activo">Texto</button>
+    <button type="button" data-m="voz">Voz</button>
+  </div>
+  <button id="menuBtn" class="ico" aria-label="Opciones"><svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg></button>
+</header>
+
+<section id="ajustes" hidden>
+  <select id="mics" hidden title="Micrófono a usar"></select>
+  <div class="fila2"><button id="probar" type="button">Probar micrófonos</button><div id="nivel" title="Volumen de tu micrófono"><i></i></div></div>
+  <label class="fila2"><input type="checkbox" id="altavoz"> Modo altavoz (si AVI se escucha a sí misma)</label>
+</section>
+
+<section id="chat"><div id="vacio">Escríbeme aquí, o toca el micrófono para hablar conmigo.</div></section>
+
+<form id="barra" data-modo="mic" autocomplete="off">
+  <input id="txt" placeholder="Escribe un mensaje" enterkeyhint="send">
+  <button id="accion" type="submit" aria-label="Enviar o hablar">
+    <svg class="i-mic" viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+    <svg class="i-enviar" viewBox="0 0 24 24"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
+  </button>
+</form>
+
+<audio id="salidaAudio" playsinline hidden></audio>
+<div id="voz">
+  <div id="avisoVoz"></div>
+  <div id="zonaOrbe"><div class="orbe" id="orbe"><i></i><i></i><i></i></div></div>
+  <section id="tarjetaSolicitudes" hidden>
+    <h2 id="solTitulo">Solicitudes pendientes</h2>
+    <div id="solLista"></div>
+  </section>
+  <section id="tarjetaCorreo" hidden>
+    <h2>Correo</h2>
+    <div class="asunto" id="correoAsunto"></div>
+    <div class="mensaje" id="correoMensaje"></div>
+  </section>
+  <div id="controlesVoz">
+    <button id="micMute" type="button" aria-label="Apagar o encender el micrófono">
+      <svg class="i-encendido" viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+      <svg class="i-apagado" viewBox="0 0 24 24"><path d="M19 11h-2a5 5 0 0 1-.34 1.81l1.45 1.45A6.97 6.97 0 0 0 19 11zM12 14a3 3 0 0 0 3-3v-.35l-3.24-3.24A1 1 0 0 0 9 8v3a3 3 0 0 0 3 3zm7.27 6.68 1.41-1.41L3.55 2.14 2.14 3.55l5.87 5.87V11a3 3 0 0 0 4.28 2.72l1.55 1.55A4.98 4.98 0 0 1 7 11H5a7 7 0 0 0 6 6.92V21h2v-3.08a6.96 6.96 0 0 0 2.63-.95z"/></svg>
+    </button>
+    <button id="colgar" aria-label="Terminar conversación de voz"><svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.99.99 0 0 1-.29-.71c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28a11.27 11.27 0 0 0-2.67-1.85.996.996 0 0 1-.56-.9v-3.1A15.05 15.05 0 0 0 12 9z"/></svg></button>
+  </div>
+</div>
+
+<script>
+const MODO_PRUEBA = "__MODO_PRUEBA__" === "1";
+const $ = s => document.querySelector(s);
+const base = location.pathname.endsWith('/') ? location.pathname : location.pathname + '/';
+let ws = null, wsListo = false, esperaListo = null, resolverListo = null, rechazarListo = null;
+let ctxIn = null, ctxOut = null, stream = null, worklet = null, salidaDest = null;
+let playhead = 0, fuentes = new Set(), hablando = false, voz = false, wake = null;
+let burbuja = {rol: null, el: null};
+let ultimaAvi = '', turnoListo = false, tSilencio = null, reintentos = 0, ultimoHabla = 0;
+let nivelMax = 0, silenciosDeSeguido = 0, probadoSinFiltros = false, historialAvi = '';
+let micApagado = false;
+const ESPERA_REPREGUNTA_MS = 2000;   // si AVI pregunta y no responden en este tiempo, AVI repite la pregunta
+const MAX_REPREGUNTAS = 2;
+
+if (MODO_PRUEBA) $('#prueba').hidden = false;
+$('#altavoz').checked = localStorage.getItem('avi_altavoz') === '1';
+$('#altavoz').onchange = e => localStorage.setItem('avi_altavoz', e.target.checked ? '1' : '0');
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+function tema(c){ document.querySelector('meta[name=theme-color]').setAttribute('content', c); }
+
+const WORKLET = `
+class PCM16 extends AudioWorkletProcessor {
+  constructor(){ super(); this.ratio = sampleRate / 16000; this.acc = []; }
+  process(inputs){
+    const ch = inputs[0] && inputs[0][0];
+    if (!ch) return true;
+    for (let i = 0; i < ch.length; i++) this.acc.push(ch[i]);
+    const need = Math.ceil(this.ratio * 1600);
+    while (this.acc.length >= need) {
+      const out = new Int16Array(1600);
+      for (let j = 0; j < 1600; j++) {
+        const a = Math.floor(j * this.ratio), b = Math.max(a + 1, Math.floor((j + 1) * this.ratio));
+        let s = 0; for (let k = a; k < b; k++) s += this.acc[k];
+        s /= (b - a);
+        out[j] = Math.max(-1, Math.min(1, s)) * 0x7fff;
+      }
+      this.acc.splice(0, Math.round(this.ratio * 1600));
+      this.port.postMessage(out.buffer, [out.buffer]);
+    }
+    return true;
+  }
+}
+registerProcessor('pcm16', PCM16);`;
+
+/* ---------- chat ---------- */
+function estadoCab(t){ $('#estado').textContent = t; }
+function nuevaBurbuja(rol, texto){
+  const v = $('#vacio'); if (v) v.remove();
+  const el = document.createElement('div');
+  el.className = 'b ' + rol; el.textContent = texto || '';
+  $('#chat').appendChild(el);
+  $('#chat').scrollTop = $('#chat').scrollHeight;
+  if (voz && rol === 'sis') avisoVoz(texto);
+  return el;
+}
+function avisoVoz(t){ const a = $('#avisoVoz'); a.textContent = t; clearTimeout(avisoVoz.t); avisoVoz.t = setTimeout(() => a.textContent = '', 6000); }
+function texto(rol, t){
+  if (rol === 'avi') { if (burbuja.rol !== 'avi') ultimaAvi = ''; ultimaAvi += t; historialAvi = (historialAvi + ' ' + t).slice(-900); turnoListo = false; clearTimeout(tSilencio); }
+  else { revisarEco(t); reintentos = 0; ultimoHabla = performance.now(); clearTimeout(tSilencio); }
+  if (burbuja.rol !== rol) burbuja = {rol, el: nuevaBurbuja(rol, '')};
+  burbuja.el.textContent += t;
+  $('#chat').scrollTop = $('#chat').scrollHeight;
+}
+
+/* ---------- correo (borrador visible en modo voz) ---------- */
+function pintarCorreo(m){
+  const hay = !!(m.asunto || m.mensaje);
+  $('#correoAsunto').textContent = m.asunto || '';
+  $('#correoMensaje').textContent = m.mensaje || '';
+  $('#tarjetaCorreo').hidden = !hay;
+}
+
+/* ---------- detalle de solicitudes de arbolado (lista con links a Maps) ---------- */
+function pintarDetalleSolicitudes(m){
+  const titulo = 'Solicitudes pendientes' + (m.zona ? ' — ' + m.zona : '') + ' (' + m.total + ')';
+  $('#solTitulo').textContent = titulo;
+  $('#solLista').innerHTML = m.html;
+  $('#tarjetaSolicitudes').hidden = false;
+  if (!voz) {
+    const v = $('#vacio'); if (v) v.remove();
+    const el = document.createElement('div');
+    el.className = 'b avi'; el.innerHTML = '<strong>' + titulo + '</strong>' + m.html;
+    $('#chat').appendChild(el);
+    $('#chat').scrollTop = $('#chat').scrollHeight;
+  }
+}
+
+/* ---------- audio de salida ---------- */
+function reproducir(buf){
+  if (!ctxOut || !voz) return;
+  turnoListo = false; clearTimeout(tSilencio);
+  const par = (buf.byteLength & 1) ? buf.slice(0, buf.byteLength - 1) : buf;
+  const i16 = new Int16Array(par);
+  const f32 = new Float32Array(i16.length);
+  for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+  const ab = ctxOut.createBuffer(1, f32.length, 24000);
+  ab.copyToChannel(f32, 0);
+  const s = ctxOut.createBufferSource(); s.buffer = ab;
+  const g = ctxOut.createGain(); g.gain.value = 1.15;   // pequeño refuerzo, sin distorsionar
+  s.connect(g); g.connect(salidaDest || ctxOut.destination);
+  const t = Math.max(ctxOut.currentTime + 0.03, playhead);
+  s.start(t); playhead = t + ab.duration;
+  fuentes.add(s); s.onended = () => fuentes.delete(s);
+  hablando = true; actualizarVoz();
+}
+function cortarAudio(){
+  fuentes.forEach(s => { try { s.stop(); } catch (e) {} });
+  fuentes.clear(); playhead = 0; hablando = false; actualizarVoz();
+}
+setInterval(() => {
+  if (hablando && ctxOut && ctxOut.currentTime >= playhead - 0.02) { hablando = false; actualizarVoz(); programarRepregunta(); }
+}, 120);
+function silenciado(){
+  return $('#altavoz').checked && ctxOut && (hablando || ctxOut.currentTime < playhead + 0.25);
+}
+function actualizarVoz(){
+  const o = $('#orbe');
+  o.classList.toggle('habla', voz && hablando);
+  if (voz) {
+    estadoCab(hablando ? 'hablando…' : (micApagado ? 'micrófono apagado' : 'escuchando…'));
+    if (hablando || micApagado) o.style.setProperty('--esc', 1);
+  } else { o.style.setProperty('--esc', 1); }
+  marcarModoSwitch();
+}
+function marcarModoSwitch(){
+  $('#modoSwitch [data-m="texto"]').classList.toggle('activo', !voz);
+  $('#modoSwitch [data-m="voz"]').classList.toggle('activo', voz);
+}
+$('#modoSwitch [data-m="voz"]').onclick = () => { if (!voz) iniciarVoz(); };
+$('#modoSwitch [data-m="texto"]').onclick = () => { if (voz) finVoz(); };
+$('#micMute').onclick = () => {
+  micApagado = !micApagado;
+  $('#micMute').classList.toggle('apagado', micApagado);
+  actualizarVoz();
+};
+
+/* ---------- re-preguntar si la persona no responde ---------- */
+function programarRepregunta(){
+  clearTimeout(tSilencio);
+  if (!voz || !turnoListo || hablando || !ws || ws.readyState !== 1) return;
+  if (ultimoHabla === 0) return;   // el saludo inicial no se repite: solo las preguntas dentro de una conversación
+  if (!/\?["»)\s]*$/.test(ultimaAvi.trim()) || reintentos >= MAX_REPREGUNTAS) return;
+  const t0 = performance.now();
+  tSilencio = setTimeout(() => {
+    if (!voz || hablando || ultimoHabla > t0 || !ws || ws.readyState !== 1) return;
+    reintentos++;
+    ws.send(JSON.stringify({type: 'repregunta'}));
+  }, ESPERA_REPREGUNTA_MS);
+}
+
+/* ---------- conexión con el servidor ---------- */
+function manejar(m){
+  switch (m.type){
+    case 'correo_estado': pintarCorreo(m); break;
+    case 'detalle_solicitudes': pintarDetalleSolicitudes(m); break;
+    case 'transcripcion': texto(m.rol, m.texto); if (m.rol === 'avi' && !voz) estadoCab('escribiendo…'); break;
+    case 'interrumpido': cortarAudio(); burbuja = {rol: null, el: null}; turnoListo = false; clearTimeout(tSilencio); break;
+    case 'turno_completo': burbuja = {rol: null, el: null}; turnoListo = true; if (!voz) estadoCab('en línea'); programarRepregunta(); break;
+    case 'listo': wsListo = true; if (resolverListo) resolverListo(); break;
+    case 'aviso': nuevaBurbuja('sis', m.mensaje); break;
+    case 'error': nuevaBurbuja('sis', m.mensaje); if (rechazarListo) rechazarListo(new Error(m.mensaje)); break;
+  }
+}
+function conectarWS(modo){
+  if (ws && ws.readyState === 1 && wsListo) return Promise.resolve();
+  if (ws && ws.readyState <= 1 && esperaListo) return esperaListo;
+  wsListo = false;
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const sock = new WebSocket(proto + '//' + location.host + base + 'ws?modo=' + modo);
+  ws = sock; sock.binaryType = 'arraybuffer';
+  esperaListo = new Promise((res, rej) => { resolverListo = res; rechazarListo = rej; setTimeout(() => rej(new Error('tiempo agotado')), 25000); });
+  esperaListo.catch(() => {});
+  sock.onmessage = e => { if (typeof e.data === 'string') manejar(JSON.parse(e.data)); else reproducir(e.data); };
+  sock.onclose = () => {
+    if (ws !== sock) return;
+    ws = null; wsListo = false; esperaListo = null;
+    if (rechazarListo) rechazarListo(new Error('cerrada'));
+    if (voz) { nuevaBurbuja('sis', 'Se cortó la conexión.'); finVoz(); }
+    estadoCab('en línea');
+  };
+  sock.onerror = () => {};
+  return esperaListo;
+}
+
+/* ---------- modo texto ---------- */
+async function enviarTexto(t){
+  nuevaBurbuja('user', t); burbuja = {rol: null, el: null}; reintentos = 0; ultimoHabla = performance.now(); clearTimeout(tSilencio);
+  estadoCab('conectando…');
+  try { await conectarWS('texto'); }
+  catch (e) { nuevaBurbuja('sis', 'No pude conectar con AVI. Intenta de nuevo en un momento.'); estadoCab('en línea'); return; }
+  ws.send(JSON.stringify({type: 'text', text: t}));
+  estadoCab('escribiendo…');
+}
+$('#txt').oninput = () => { $('#barra').dataset.modo = $('#txt').value.trim() ? 'enviar' : 'mic'; };
+$('#barra').onsubmit = e => {
+  e.preventDefault();
+  const t = $('#txt').value.trim();
+  if (t) { $('#txt').value = ''; $('#barra').dataset.modo = 'mic'; enviarTexto(t); }
+  else iniciarVoz();
+};
+$('#menuBtn').onclick = () => { const a = $('#ajustes'); a.hidden = !a.hidden; if (!a.hidden) llenarMics(); };
+
+/* ---------- modo voz ---------- */
+// Si el navegador no deja iniciar el audio sin un toque (política de autoplay), se espera el primer toque.
+async function reanudar(ctx){
+  if (ctx.state === 'running') return;
+  try { await Promise.race([ctx.resume(), new Promise(r => setTimeout(r, 600))]); } catch (e) {}
+  if (ctx.state === 'running') return;
+  const av = $('#avisoVoz'); av.textContent = 'Toca la pantalla para empezar a hablar con AVI';
+  const evs = ['pointerdown', 'touchstart', 'keydown', 'click'];
+  await new Promise(res => { const f = () => { evs.forEach(e => removeEventListener(e, f, true)); res(); }; evs.forEach(e => addEventListener(e, f, true)); });
+  av.textContent = '';
+  try { await ctx.resume(); } catch (e) {}
+}
+async function iniciarVoz(){
+  if (voz) return;
+  try {
+    voz = true; document.body.classList.add('voz'); tema('#050b12'); $('#ajustes').hidden = true;
+    micApagado = false; $('#micMute').classList.remove('apagado'); marcarModoSwitch();
+    estadoCab('conectando…');
+    ctxOut = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 24000});
+    await reanudar(ctxOut);
+    if (!voz) return;
+    // Se reproduce a través de un <audio>, no directo al destino del AudioContext: en Android, cuando el
+    // micrófono está activo a la vez, el audio "crudo" de Web Audio suele salir por el modo de llamada
+    // (bajito, por el auricular). Pasarlo por un <audio> lo trata como audio normal (fuerte, por el parlante).
+    salidaDest = ctxOut.createMediaStreamDestination();
+    const salidaEl = $('#salidaAudio');
+    salidaEl.srcObject = salidaDest.stream;
+    salidaEl.play().catch(() => {});
+    const filtros = localStorage.getItem('avi_sinfiltros2') !== '1';
+    const audio = {echoCancellation: filtros, noiseSuppression: filtros, autoGainControl: filtros, channelCount: 1};
+    const pref = localStorage.getItem('avi_mic');
+    if (pref) audio.deviceId = {ideal: pref};
+    stream = await navigator.mediaDevices.getUserMedia({audio});
+    ctxIn = new (window.AudioContext || window.webkitAudioContext)();
+    await reanudar(ctxIn);
+    if (!voz) return;
+    await ctxIn.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], {type: 'application/javascript'})));
+    const src = ctxIn.createMediaStreamSource(stream);
+    worklet = new AudioWorkletNode(ctxIn, 'pcm16');
+    worklet.port.onmessage = e => {
+      const a = new Int16Array(e.data); let pico = 0;
+      for (let i = 0; i < a.length; i += 8) { const v = Math.abs(a[i]); if (v > pico) pico = v; }
+      const nv = pico / 32767;
+      nivelMax = Math.max(nivelMax, nv);
+      $('#nivel i').style.width = Math.min(100, Math.round(nv * 400)) + '%';
+      if (!hablando && !micApagado) $('#orbe').style.setProperty('--esc', (1 + Math.min(0.32, nv * 1.3)).toFixed(3));
+      if (nv > 0.05 && !silenciado() && !micApagado) ultimoHabla = performance.now();
+      if (ws && ws.readyState === 1 && wsListo && voz && !silenciado() && !micApagado) ws.send(e.data);
+    };
+    src.connect(worklet);
+    const yaConectada = ws && ws.readyState === 1 && wsListo;
+    if (yaConectada) ws.send(JSON.stringify({type: 'modo', valor: 'voz'}));
+    else await conectarWS('voz');
+    try { wake = await navigator.wakeLock.request('screen'); } catch (e) {}
+    actualizarVoz();
+  } catch (err) {
+    const msg = err && err.name === 'NotAllowedError' ? 'Permite el micrófono en el navegador para hablar con AVI.' : 'No pude iniciar la voz: ' + (err && err.message ? err.message : err);
+    finVoz(); nuevaBurbuja('sis', msg);
+  }
+}
+function finVoz(){
+  const estabaEnVoz = voz;
+  voz = false; document.body.classList.remove('voz'); tema('#008069');
+  try { if (ws && ws.readyState === 1 && estabaEnVoz) ws.send(JSON.stringify({type: 'modo', valor: 'texto'})); } catch (e) {}
+  try { if (worklet) worklet.disconnect(); } catch (e) {}
+  worklet = null;
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null;
+  cortarAudio();
+  try { if (ctxIn) ctxIn.close(); } catch (e) {}
+  try { if (ctxOut) ctxOut.close(); } catch (e) {}
+  ctxIn = ctxOut = null; salidaDest = null;
+  try { $('#salidaAudio').pause(); $('#salidaAudio').srcObject = null; } catch (e) {}
+  try { if (wake) wake.release(); } catch (e) {}
+  wake = null; burbuja = {rol: null, el: null}; clearTimeout(tSilencio);
+  estadoCab('en línea'); actualizarVoz();
+}
+$('#colgar').onclick = () => {
+  finVoz();
+  try { window.close(); } catch (e) {}   // no todos los navegadores dejan que una página se cierre sola
+  // Como no se puede cerrar la app, al menos se termina la conversación por completo (no solo la voz):
+  // se corta la conexión con AVI y se borra el chat, como si la app se abriera de nuevo desde cero.
+  if (ws) { try { ws.close(); } catch (e) {} }
+  ws = null; wsListo = false;
+  $('#chat').innerHTML = '<div id="vacio">Escríbeme aquí, o toca el micrófono para hablar conmigo.</div>';
+  burbuja = {rol: null, el: null};
+  pintarCorreo({asunto: '', mensaje: ''});
+  $('#tarjetaSolicitudes').hidden = true;
+};
+
+// Solo se considera "micrófono mudo" si TODOS los paquetes llegan en cero absoluto (un micrófono real siempre tiene algo de ruido).
+setInterval(() => {
+  if (!voz || micApagado) { silenciosDeSeguido = 0; return; }
+  if (nivelMax === 0 && !hablando) {
+    silenciosDeSeguido++;
+    if (silenciosDeSeguido >= 2) avisoVoz('No llega sonido del micrófono. Sal de esta pantalla y toca "Probar micrófonos" en el menú ⋮.');
+    if (silenciosDeSeguido === 3 && !probadoSinFiltros && localStorage.getItem('avi_sinfiltros2') !== '1') {
+      probadoSinFiltros = true;
+      localStorage.setItem('avi_sinfiltros2', '1');
+      avisoVoz('No llega sonido. Pruebo el micrófono sin filtros de audio…');
+      finVoz(); setTimeout(iniciarVoz, 500);
+    }
+  } else { silenciosDeSeguido = 0; }
+  nivelMax = 0;
+}, 4000);
+
+// Detector de eco: si lo que "dijo" la persona es un trozo de lo que AVI acaba de decir, el micrófono está oyendo el altavoz.
+function norm(s){ return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+function revisarEco(fragmento){
+  const f = norm(fragmento);
+  if (f.length < 14 || !norm(historialAvi).includes(f)) return;
+  if (!$('#altavoz').checked) {
+    $('#altavoz').checked = true; localStorage.setItem('avi_altavoz', '1');
+    avisoVoz('Detecté eco (AVI se escuchaba a sí misma). Activé el modo altavoz automáticamente.');
+  }
+}
+
+/* ---------- elegir y probar micrófonos ---------- */
+async function llenarMics(){
+  try {
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+    const actual = stream && stream.getAudioTracks()[0] ? stream.getAudioTracks()[0].getSettings().deviceId : localStorage.getItem('avi_mic');
+    const sel = $('#mics'); sel.innerHTML = '';
+    devs.forEach(d => {
+      const o = document.createElement('option'); o.value = d.deviceId;
+      o.textContent = 'Micrófono: ' + (d.label || 'sin nombre'); if (d.deviceId === actual) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.hidden = devs.length < 2;
+  } catch (e) {}
+}
+$('#mics').onchange = e => { localStorage.setItem('avi_mic', e.target.value); };
+
+async function probarMics(){
+  if (voz) finVoz();
+  const btn = $('#probar'); btn.disabled = true;
+  try {
+    nuevaBurbuja('sis', 'Probando tus micrófonos. Habla en voz normal (por ejemplo, cuenta hasta diez) mientras dura la prueba…');
+    try { const t = await navigator.mediaDevices.getUserMedia({audio: true}); t.getTracks().forEach(x => x.stop()); }
+    catch (e) { nuevaBurbuja('sis', 'El navegador no tiene permiso para usar el micrófono (' + e.name + ').'); return; }
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+    const res = [];
+    for (const d of devs) {
+      let nivel = -1, nota = '';
+      try {
+        const st = await navigator.mediaDevices.getUserMedia({audio: {deviceId: {exact: d.deviceId}, echoCancellation: false, noiseSuppression: false, autoGainControl: false}});
+        if (st.getAudioTracks()[0].muted) nota = ' (silenciado por el sistema)';
+        const ac = new (window.AudioContext || window.webkitAudioContext)(); await ac.resume();
+        const an = ac.createAnalyser(); an.fftSize = 2048; ac.createMediaStreamSource(st).connect(an);
+        const buf = new Float32Array(an.fftSize); let max = 0; const t0 = performance.now();
+        while (performance.now() - t0 < 2500) { an.getFloatTimeDomainData(buf); for (let i = 0; i < buf.length; i++) max = Math.max(max, Math.abs(buf[i])); await new Promise(r => setTimeout(r, 40)); }
+        nivel = max; st.getTracks().forEach(x => x.stop()); await ac.close();
+      } catch (e) { nota = ' (error: ' + e.name + ')'; }
+      res.push({d, nivel, nota});
+      nuevaBurbuja('sis', (d.label || 'sin nombre') + ': ' + (nivel < 0 ? 'no se pudo abrir' : Math.round(nivel * 100) + '%') + nota);
+    }
+    const mejor = res.filter(r => r.nivel >= 0).sort((a, b) => b.nivel - a.nivel)[0];
+    if (mejor && mejor.nivel >= 0.02) {
+      localStorage.setItem('avi_mic', mejor.d.deviceId);
+      nuevaBurbuja('sis', 'Listo: usaré "' + (mejor.d.label || 'sin nombre') + '". Ahora toca el micrófono verde.');
+      llenarMics();
+    } else {
+      nuevaBurbuja('sis', 'Ningún micrófono entregó sonido. Revisa Windows (Configuración > Sistema > Sonido > Entrada), que el micrófono no esté silenciado, y tu antivirus.');
+    }
+  } finally { btn.disabled = false; }
+}
+$('#probar').onclick = probarMics;
+
+/* vista de demostración del modo voz (para revisar el diseño sin micrófono) */
+if (location.hash === '#democorreo') {
+  document.body.classList.add('voz'); voz = true; marcarModoSwitch();
+  pintarCorreo({asunto: 'Ejemplo de asunto',
+    mensaje: 'Estimados,\n\nEste es un correo de ejemplo para revisar el diseño.\n\nSaludos cordiales,\nEjemplo'});
+} else if (location.hash === '#demosol') {
+  document.body.classList.add('voz'); voz = true; marcarModoSwitch();
+  pintarDetalleSolicitudes({zona: 'La Florida', total: 1,
+    html: '<ol><li>Claudia Rojas - Pasaje Michay # 2213<br><a href="#" target="_blank" rel="noopener">Ver en Google Maps</a></li></ol>'});
+} else if (location.hash === '#demosoltexto') {
+  pintarDetalleSolicitudes({zona: 'La Florida', total: 1,
+    html: '<ol><li>Claudia Rojas - Pasaje Michay # 2213<br><a href="#" target="_blank" rel="noopener">Ver en Google Maps</a></li></ol>'});
+} else {
+  // Por defecto AVI abre en modo voz; solo pasa a texto cuando el usuario cuelga.
+  iniciarVoz();
+}
+</script>
+</body>
+</html>

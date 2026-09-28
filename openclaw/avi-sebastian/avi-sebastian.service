@@ -1,0 +1,14 @@
+[Unit]
+Description=AVI Sebastian - asistente de voz personal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/ubuntu/avi-sebastian
+ExecStart=/home/ubuntu/avi-sebastian/venv/bin/python /home/ubuntu/avi-sebastian/server.py
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
