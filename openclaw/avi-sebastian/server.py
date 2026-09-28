@@ -76,7 +76,7 @@ TOOLS = [{"functionDeclarations": [
     },
     {
         "name": "informe_trabajos_ejecutados",
-        "description": "Genera y envía por correo un informe en Excel de los trabajos de arbolado YA EJECUTADOS/REALIZADOS en un rango de fechas (fotos reales, minimapa con ubicación y enlace a Google Maps de cada trabajo). Úsala solo cuando pida un informe o reporte de trabajos ejecutados/realizados/hechos (no de solicitudes pendientes, para eso usa solicitudes_arbolado_pendientes). Si no dio el rango de fechas, PREGÚNTASELO ANTES de llamar a esta herramienta; no asumas fechas.",
+        "description": "Genera y envía por correo un informe en Excel de los trabajos de arbolado YA EJECUTADOS/REALIZADOS en un rango de fechas (fotos reales, minimapa con ubicación y enlace a Google Maps de cada trabajo). Úsala solo cuando pida un informe o reporte de trabajos ejecutados/realizados/hechos (no de solicitudes pendientes, para eso usa solicitudes_arbolado_pendientes). Sé flexible con las fechas: si da una referencia relativa o aproximada ('este año', 'el mes pasado', 'los últimos 6 meses', 'esta semana', 'en agosto'), calcula tú misma el rango exacto (desde/hasta) a partir de la fecha de hoy, SIN pedirle día y mes exactos. Solo pregunta si no dio ninguna referencia de tiempo, y en ese caso ofrécele opciones simples (por ejemplo 'el último mes' o 'los últimos 6 meses') en vez de pedir una fecha exacta.",
         "parameters": {"type": "OBJECT", "properties": {
             "desde": {"type": "STRING", "description": "Fecha de inicio del rango, formato AAAA-MM-DD. Obligatoria."},
             "hasta": {"type": "STRING", "description": "Fecha de término del rango, formato AAAA-MM-DD. Obligatoria."},
@@ -215,8 +215,12 @@ def instruccion(ahora):
         "sin inventar datos.\n"
         "E) Informe de trabajos ejecutados: cuando pida un informe o reporte de los trabajos YA ejecutados/realizados "
         "(por ejemplo 'necesito los trabajos ejecutados en el Casco Histórico' o 'mándame un informe de lo hecho la "
-        "semana pasada'), usa informe_trabajos_ejecutados. Si no te dio el rango de fechas, PREGÚNTASELO primero (no "
-        "asumas un rango); si dio una zona, pásala. Esta herramienta genera el Excel (con fotos, minimapa y ubicación "
+        "semana pasada'), usa informe_trabajos_ejecutados. SÉ FLEXIBLE con las fechas: si da una referencia relativa "
+        "o aproximada ('este año', 'el mes pasado', 'los últimos 6 meses', 'esta semana', 'en agosto'), calcula tú "
+        "misma el rango exacto (desde/hasta) usando la fecha de hoy de arriba, SIN pedirle el día y mes exactos de "
+        "cada extremo. Solo pregunta por fechas si no dio ninguna referencia de tiempo, y ahí ofrécele opciones "
+        "simples (por ejemplo '¿el último mes, o los últimos 6 meses?') en vez de pedirle una fecha exacta; si dio "
+        "una zona, pásala. Esta herramienta genera el Excel (con fotos, minimapa y ubicación "
         "de cada trabajo) y lo envía por correo en un solo paso; no hace falta guardar_borrador_correo para esto, y "
         "la herramienta puede tardar unos segundos en responder (armando el archivo), así que si te pide el informe "
         "dile brevemente algo como 'dame un momento, lo estoy preparando' antes de llamarla. Cuando responda, dile "
