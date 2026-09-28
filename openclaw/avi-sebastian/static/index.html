@@ -9,6 +9,7 @@
 <meta name="robots" content="noindex,nofollow">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.min.js"></script>
 <title>AVI</title>
 <style>
 :root{--verde:#008069;--verde2:#00a884;--fondo:#efeae2;--txt:#111b21;--mut:#667781;--barra:#f0f2f5;--user:#d9fdd3}
@@ -55,6 +56,13 @@ body.voz #modoSwitch button.activo{background:#2dd4bf;color:#04211e}
 #accion .i-enviar{display:none}
 #barra[data-modo=enviar] #accion .i-enviar{display:block}
 #barra[data-modo=enviar] #accion .i-mic{display:none}
+#adjuntarBtn{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--mut);flex:none;padding:0}
+#adjuntarBtn svg{width:24px;height:24px;fill:var(--mut)}
+#menuAdjuntar{position:fixed;z-index:22;left:8px;bottom:64px;background:#fff;border-radius:10px;box-shadow:0 2px 14px rgba(0,0,0,.25);overflow:hidden;min-width:180px}
+#menuAdjuntar button{display:block;width:100%;padding:13px 18px;text-align:left;background:#fff;font-size:.92rem;color:var(--txt)}
+#menuAdjuntar button:active{background:var(--barra)}
+.b.foto{padding:4px;background:transparent;box-shadow:none}
+.b.foto img{max-width:100%;border-radius:8px;display:block}
 
 /* ---------- modo voz (estilo Jarvis, oscuro, solo voz) ---------- */
 #voz{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:flex-end;
@@ -116,12 +124,21 @@ body.voz #voz{display:flex}
 <section id="chat"><div id="vacio">Escríbeme aquí, o toca el micrófono para hablar conmigo.</div></section>
 
 <form id="barra" data-modo="mic" autocomplete="off">
+  <button id="adjuntarBtn" type="button" aria-label="Adjuntar foto">
+    <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6h-1.5z"/></svg>
+  </button>
   <input id="txt" placeholder="Escribe un mensaje" enterkeyhint="send">
   <button id="accion" type="submit" aria-label="Enviar o hablar">
     <svg class="i-mic" viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
     <svg class="i-enviar" viewBox="0 0 24 24"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
   </button>
 </form>
+<input type="file" id="inputCamara" accept="image/*" capture="environment" hidden>
+<input type="file" id="inputGaleria" accept="image/*" hidden>
+<div id="menuAdjuntar" hidden>
+  <button type="button" id="optCamara">📷 Tomar foto</button>
+  <button type="button" id="optGaleria">🖼️ Elegir de galería</button>
+</div>
 
 <audio id="salidaAudio" playsinline hidden></audio>
 <div id="voz">
@@ -346,6 +363,105 @@ $('#barra').onsubmit = e => {
   else iniciarVoz();
 };
 $('#menuBtn').onclick = () => { const a = $('#ajustes'); a.hidden = !a.hidden; if (!a.hidden) llenarMics(); };
+
+/* ---------- fotos (cámara / galería) ---------- */
+const NOMBRE_SELLO = 'Sebastián Cortés';
+function fmt2(n){ return String(n).padStart(2, '0'); }
+function fmtFechaSello(d){ return fmt2(d.getDate()) + '/' + fmt2(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + fmt2(d.getHours()) + ':' + fmt2(d.getMinutes()); }
+function fmtFechaExif(d){ return d.getFullYear() + ':' + fmt2(d.getMonth() + 1) + ':' + fmt2(d.getDate()) + ' ' + fmt2(d.getHours()) + ':' + fmt2(d.getMinutes()) + ':' + fmt2(d.getSeconds()); }
+function fmtCoord(n){ return n.toFixed(6); }
+
+function cargarImagenDesdeArchivo(file){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = URL.createObjectURL(file);
+  });
+}
+function obtenerUbicacion(){
+  return new Promise(res => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      p => res({lat: p.coords.latitude, lon: p.coords.longitude}),
+      () => res(null),
+      {enableHighAccuracy: true, timeout: 8000, maximumAge: 0}
+    );
+  });
+}
+function dibujarSelloAgua(ctx, w, h, lineas){
+  const tam = Math.max(16, Math.round(w * 0.032));
+  const pad = Math.round(tam * 0.6);
+  const lineH = Math.round(tam * 1.35);
+  const altoFranja = lineH * lineas.length + pad * 2;
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(0, h - altoFranja, w, altoFranja);
+  ctx.fillStyle = '#fff';
+  ctx.font = tam + 'px system-ui, sans-serif';
+  ctx.textBaseline = 'top';
+  lineas.forEach((linea, i) => ctx.fillText(linea, pad, h - altoFranja + pad + i * lineH));
+}
+function incrustarExif(dataUrlJpeg, ubic, fecha){
+  if (!window.piexif) return dataUrlJpeg;
+  try {
+    const zeroth = {}, exif = {}, gps = {};
+    const fechaExif = fmtFechaExif(fecha);
+    zeroth[piexif.ImageIFD.DateTime] = fechaExif;
+    zeroth[piexif.ImageIFD.Artist] = NOMBRE_SELLO;
+    exif[piexif.ExifIFD.DateTimeOriginal] = fechaExif;
+    if (ubic) {
+      gps[piexif.GPSIFD.GPSLatitudeRef] = ubic.lat < 0 ? 'S' : 'N';
+      gps[piexif.GPSIFD.GPSLatitude] = piexif.GPSHelper.degToDmsRational(Math.abs(ubic.lat));
+      gps[piexif.GPSIFD.GPSLongitudeRef] = ubic.lon < 0 ? 'W' : 'E';
+      gps[piexif.GPSIFD.GPSLongitude] = piexif.GPSHelper.degToDmsRational(Math.abs(ubic.lon));
+    }
+    const exifBytes = piexif.dump({'0th': zeroth, 'Exif': exif, 'GPS': gps});
+    return piexif.insert(exifBytes, dataUrlJpeg);
+  } catch (e) { console.warn('EXIF', e); return dataUrlJpeg; }
+}
+function agregarBurbujaFoto(src){
+  const v = $('#vacio'); if (v) v.remove();
+  const el = document.createElement('div');
+  el.className = 'b user foto';
+  const img = document.createElement('img');
+  img.src = src;
+  el.appendChild(img);
+  $('#chat').appendChild(el);
+  $('#chat').scrollTop = $('#chat').scrollHeight;
+}
+async function procesarFotoCamara(file){
+  estadoCab('procesando foto…');
+  try {
+    const [img, ubic] = await Promise.all([cargarImagenDesdeArchivo(file), obtenerUbicacion()]);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const fecha = new Date();
+    const lineas = [
+      fmtFechaSello(fecha),
+      ubic ? (fmtCoord(ubic.lat) + ', ' + fmtCoord(ubic.lon)) : 'GPS no disponible',
+      NOMBRE_SELLO
+    ];
+    dibujarSelloAgua(ctx, canvas.width, canvas.height, lineas);
+    let dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    dataUrl = incrustarExif(dataUrl, ubic, fecha);
+    agregarBurbujaFoto(dataUrl);
+  } catch (e) {
+    nuevaBurbuja('sis', 'No pude procesar la foto: ' + (e && e.message ? e.message : e));
+  } finally { estadoCab(voz ? (hablando ? 'hablando…' : 'escuchando…') : 'en línea'); }
+}
+function procesarFotoGaleria(file){ agregarBurbujaFoto(URL.createObjectURL(file)); }
+
+$('#adjuntarBtn').onclick = () => { $('#menuAdjuntar').hidden = !$('#menuAdjuntar').hidden; };
+document.addEventListener('click', e => {
+  const m = $('#menuAdjuntar');
+  if (!m.hidden && e.target !== $('#adjuntarBtn') && !m.contains(e.target) && !$('#adjuntarBtn').contains(e.target)) m.hidden = true;
+});
+$('#optCamara').onclick = () => { $('#menuAdjuntar').hidden = true; $('#inputCamara').click(); };
+$('#optGaleria').onclick = () => { $('#menuAdjuntar').hidden = true; $('#inputGaleria').click(); };
+$('#inputCamara').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) procesarFotoCamara(f); };
+$('#inputGaleria').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) procesarFotoGaleria(f); };
 
 /* ---------- modo voz ---------- */
 // Si el navegador no deja iniciar el audio sin un toque (política de autoplay), se espera el primer toque.
